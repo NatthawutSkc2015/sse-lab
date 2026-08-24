@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSE Chat</title>
+  <link rel="stylesheet" href="/web/style.css" />
+</head>
+<body>
+  <main>
+    <section id="join-screen" class="join-screen">
+      <div class="join-card">
+        <h1>SSE Chat</h1>
+        <p class="sub">ห้องแชทสาธิต SSE รองรับผู้ใช้ 100+ คนพร้อมกัน</p>
+        <input id="user-input" type="text" placeholder="ตั้งชื่อของคุณ" maxlength="24" autocomplete="off" />
+        <button id="join-btn">เข้าห้องแชท</button>
+      </div>
+    </section>
+
+    <section id="chat-screen" class="chat-screen hidden">
+      <header class="chat-header">
+        <div class="chat-title">
+          <h1>SSE Chat</h1>
+          <span id="conn-status" class="pill pending">กำลังเชื่อมต่อ…</span>
+        </div>
+        <div class="online">
+          <span id="client-count">0</span> คนออนไลน์
+        </div>
+      </header>
+
+      <ul id="messages" class="messages"></ul>
+
+      <form id="composer" class="composer">
+        <input id="msg-input" type="text" placeholder="พิมพ์ข้อความ…" maxlength="500" autocomplete="off" />
+        <button type="submit">ส่ง</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/web/app.js"></script>
+</body>
+</html>
