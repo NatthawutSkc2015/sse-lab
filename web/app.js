@@ -1,7 +1,5 @@
 (() => {
-  const BACKEND_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1"
-    ? "http://localhost:9000"
-    : "https://sse-lab-chat.fly.dev";
+  const BACKEND_URL = location.hostname;
   const USERNAME_KEY = "sse-chat-username";
   const MAX_MESSAGES = 500;
 
