@@ -20,8 +20,8 @@ var webFS embed.FS
 const maxNameLen = 24
 const maxMessageLen = 500
 
-// chatEvent is the JSON payload pushed down the SSE stream. Type is one of
-// "chat", "join", or "leave" so the frontend can render each differently.
+// chatEvent คือ payload แบบ JSON ที่ส่งลงไปตาม SSE stream โดย Type จะเป็นค่าใดค่าหนึ่ง
+// จาก "chat", "join", หรือ "leave" เพื่อให้ฝั่ง frontend เรนเดอร์แต่ละแบบต่างกันได้
 type chatEvent struct {
 	Type    string `json:"type"`
 	User    string `json:"user"`
@@ -35,13 +35,13 @@ func mustJSON(v any) string {
 	return string(b)
 }
 
-// sanitizeName trims and length-caps a display name. It stays plain text —
-// the frontend renders it with textContent, never innerHTML, so no
-// HTML-escaping is needed here.
+// sanitizeName ตัดช่องว่างและจำกัดความยาวของชื่อที่แสดง โดยยังคงเป็นข้อความล้วน —
+// ฝั่ง frontend เรนเดอร์ด้วย textContent ไม่ใช่ innerHTML ดังนั้นจึงไม่จำเป็นต้อง
+// escape HTML ที่นี่
 func sanitizeName(s string) string {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return "Anonymous"
+		return "ไม่ระบุชื่อ"
 	}
 	if len(s) > maxNameLen {
 		s = s[:maxNameLen]
@@ -49,18 +49,17 @@ func sanitizeName(s string) string {
 	return s
 }
 
-// Client is one connected SSE subscriber: their outbound message queue plus
-// the display name they joined with.
+// Client คือผู้สมัครสมาชิก SSE ที่เชื่อมต่ออยู่หนึ่งราย ประกอบด้วยคิวข้อความขาออก
+// ของตัวเองและชื่อที่แสดงตอนเข้าร่วม
 type Client struct {
 	ch   chan string
 	user string
 }
 
-// Hub keeps track of every connected SSE client and fans out broadcasts to
-// all of them. A per-client buffered channel plus a non-blocking send keeps
-// one slow reader from stalling the rest of the pool, which is what lets
-// this scale past 100 concurrent connections on a single goroutine-per-conn
-// model.
+// Hub คอยติดตามไคลเอนต์ SSE ที่เชื่อมต่ออยู่ทั้งหมดและกระจายข้อความ broadcast ไปยัง
+// ทุกคน การใช้ channel แบบ buffered ต่อไคลเอนต์หนึ่งตัวร่วมกับการส่งแบบ non-blocking
+// ช่วยไม่ให้ผู้อ่านที่ช้ารายหนึ่งทำให้พูลทั้งหมดสะดุด ซึ่งเป็นสิ่งที่ทำให้ระบบนี้
+// รองรับได้เกิน 100 การเชื่อมต่อพร้อมกันบนโมเดลหนึ่ง goroutine ต่อหนึ่งการเชื่อมต่อ
 type Hub struct {
 	mu      sync.RWMutex
 	clients map[uint64]*Client
@@ -102,7 +101,7 @@ func (h *Hub) broadcast(msg string) {
 		select {
 		case c.ch <- msg:
 		default:
-			log.Printf("client %d is slow, dropping a message", id)
+			log.Printf("ไคลเอนต์ %d ทำงานช้า กำลังทิ้งข้อความ", id)
 		}
 	}
 }
@@ -110,23 +109,23 @@ func (h *Hub) broadcast(msg string) {
 func (h *Hub) eventsHandler(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		http.Error(w, "ไม่รองรับการสตรีม", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no") // disable proxy buffering (nginx)
+	w.Header().Set("X-Accel-Buffering", "no") // ปิดการ buffer ของ proxy (nginx)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	user := sanitizeName(r.URL.Query().Get("user"))
 	id, ch := h.register(user)
-	log.Printf("client %d (%s) connected (total=%d)", id, user, h.count())
+	log.Printf("ไคลเอนต์ %d (%s) เชื่อมต่อแล้ว (รวม=%d)", id, user, h.count())
 
 	defer func() {
 		h.unregister(id)
-		log.Printf("client %d (%s) disconnected (total=%d)", id, user, h.count())
+		log.Printf("ไคลเอนต์ %d (%s) ตัดการเชื่อมต่อแล้ว (รวม=%d)", id, user, h.count())
 		h.broadcast(mustJSON(chatEvent{
 			Type:    "leave",
 			User:    user,
@@ -173,17 +172,17 @@ type broadcastReq struct {
 
 func (h *Hub) broadcastHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "ไม่อนุญาตให้ใช้ method นี้", http.StatusMethodNotAllowed)
 		return
 	}
 	var req broadcastReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid body: expected {\"user\": \"...\", \"message\": \"...\"}", http.StatusBadRequest)
+		http.Error(w, "รูปแบบข้อมูลไม่ถูกต้อง: ต้องการ {\"user\": \"...\", \"message\": \"...\"}", http.StatusBadRequest)
 		return
 	}
 	message := strings.TrimSpace(req.Message)
 	if message == "" {
-		http.Error(w, "message must not be empty", http.StatusBadRequest)
+		http.Error(w, "ข้อความต้องไม่เป็นค่าว่าง", http.StatusBadRequest)
 		return
 	}
 	if len(message) > maxMessageLen {
@@ -219,10 +218,9 @@ func (h *Hub) statsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// withCORS lets the frontend be served from a different origin/port than
-// the API (e.g. a static file server for web/ while this binary listens on
-// :9000). It answers preflight OPTIONS requests and tags every response
-// with Access-Control-Allow-Origin.
+// withCORS ทำให้ frontend ถูกเสิร์ฟจาก origin/port ที่ต่างจาก API ได้ (เช่น
+// static file server สำหรับ web/ ในขณะที่ไบนารีนี้ฟังที่ :9000) มันตอบคำขอ
+// preflight OPTIONS และแนบ Access-Control-Allow-Origin ในทุกการตอบกลับ
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -237,7 +235,7 @@ func withCORS(next http.Handler) http.Handler {
 }
 
 func main() {
-	addr := flag.String("addr", ":9000", "listen address")
+	addr := flag.String("addr", ":9000", "ที่อยู่ที่จะให้เซิร์ฟเวอร์รับฟัง")
 	flag.Parse()
 
 	hub := newHub()
@@ -257,9 +255,9 @@ func main() {
 		Addr:              *addr,
 		Handler:           withCORS(mux),
 		ReadHeaderTimeout: 10 * time.Second,
-		// No WriteTimeout: SSE connections are meant to stay open.
+		// ไม่ตั้ง WriteTimeout: การเชื่อมต่อ SSE ถูกออกแบบให้ค้างไว้ได้ตลอด
 	}
 
-	log.Printf("sse-lab listening on %s", *addr)
+	log.Printf("sse-lab กำลังรับฟังที่ %s", *addr)
 	log.Fatal(srv.ListenAndServe())
 }
