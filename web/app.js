@@ -163,7 +163,7 @@
     sendMessage(text);
   });
 
-  setInterval(refreshStats, 10000);
+  // setInterval(refreshStats, 10000);
 
   const savedName = localStorage.getItem(USERNAME_KEY);
   if (savedName) userInput.value = savedName;
